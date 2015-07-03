@@ -45,13 +45,14 @@ func (p Vector) Mul(p2 Vector) Vector {
 }
 
 type PhysxObj struct {
-	id       int32
-	polygon  []Vector
-	position Vector
-	velocity Vector
-	forces   map[int32]*Force
-	nextFid  int32
-	system   *System
+	id          int32
+	polygon     []Vector
+	position    Vector
+	velocity    Vector
+	forces      map[int32]*Force
+	nextFid     int32
+	system      *System
+	lastCompute time.Time
 }
 
 func (o *PhysxObj) Id() int32 { return o.id }
@@ -59,14 +60,20 @@ func (o *PhysxObj) Id() int32 { return o.id }
 func (o *PhysxObj) recompute() {
 	now := o.system.clock.Now()
 
+	//fmt.Println("position", o.position, "velocity", o.velocity)
+	o.position = o.position.Add(o.velocity.Scale(now.Sub(o.lastCompute).Seconds()))
 	for _, value := range o.forces {
-		delta := now.Sub(value.startTime)
-		amt := value.direction.Scale(value.magnitude).Scale(delta.Seconds())
+		delta := now.Sub(value.startTime).Seconds()
+		amt := value.direction.Scale(value.magnitude)
 
-		o.position = o.position.Add(o.velocity.Add(amt.Mul(amt).Scale(.5)))
-		o.velocity = o.velocity.Add(amt)
+		// x = x_0 + v_0 * t + (1/2) * a * t^2
+		o.position = o.position.Add(amt.Scale(.5).Scale(delta * delta))
+		// v = v_0 + a * t
+		o.velocity = o.velocity.Add(amt.Scale(delta))
 		value.startTime = now
 	}
+	//fmt.Println("position", o.position, "velocity", o.velocity)
+	o.lastCompute = now
 }
 
 func (o *PhysxObj) Position() Vector {
@@ -121,7 +128,8 @@ func (s *System) AddObject(polygon []Vector, position Vector) (*PhysxObj, error)
 		return nil, errors.New("Object already exists. This shouldn't happen ever...")
 	}
 
-	s.objects[id] = &PhysxObj{id, polygon, position, Vector{0, 0}, make(map[int32]*Force), 0, s}
+	s.objects[id] = &PhysxObj{id, polygon, position, Vector{0, 0},
+		make(map[int32]*Force), 0, s, s.clock.Now()}
 	return s.objects[id], nil
 }
 

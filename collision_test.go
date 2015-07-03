@@ -100,25 +100,29 @@ func TestForceBasics(t *testing.T) {
 func TestForceOverTime(t *testing.T) {
 	system, clock := initSystem()
 	polys, position := makeTestObject(4)
-	position = position.Add(Vector{1, 1})
+	position = Vector{3, 3}
 	obj, _ := system.AddObject(polys, position)
 
 	magnitude := 1.0
 	direction := Vector{1, 0}
 
 	position = obj.Position()
-	require.Equal(t, Vector{1, 1}, position, "Haven't moved yet")
+	require.Equal(t, Vector{3, 3}, position, "Haven't moved yet")
 	velocity := obj.Velocity()
 	require.Equal(t, Vector{}, velocity, "Haven't moved yet")
 
 	f, _ := obj.AddForce(magnitude, direction)
 	clock.AddTime(time.Second)
 
+	//fmt.Println("b4 Vel")
 	newVel := obj.Velocity()
-	require.Equal(t, Vector{1, 0}, newVel.Sub(velocity), "Position didn't change")
+	require.Equal(t, Vector{1, 0}, newVel.Sub(velocity), "Velocity is incorrect")
 
+	//fmt.Println("b4 Pos")
 	newPos := obj.Position()
-	require.Equal(t, Vector{0.5, 0}, newPos.Sub(position), "Position didn't change")
+	require.Equal(t, Vector{3.5, 3}, newPos, "Position is incorrect")
+
+	//fmt.Println("No time passes")
 
 	newPos2 := obj.Position()
 	require.Equal(t, newPos, newPos2, "Position shouldn't change after calling a second time")
@@ -127,12 +131,13 @@ func TestForceOverTime(t *testing.T) {
 	require.Equal(t, newVel, newVel2, "Velocity shouldn't change after calling a second time")
 
 	f.Remove()
+	//fmt.Println("Removed force and added time...")
 
 	clock.AddTime(time.Second)
 
 	newVel = obj.Velocity()
-	require.Equal(t, newVel, newVel2, "Velocity stays the same when no force")
+	require.Equal(t, newVel2, newVel, "Velocity stays the same when no force")
 
 	newPos = obj.Position()
-	require.Equal(t, newPos, newPos2, "Position stays the same when no force")
+	require.Equal(t, Vec(4.5, 3), newPos, "Position stays the same when no force")
 }
